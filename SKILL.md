@@ -1,108 +1,107 @@
 ---
 name: local-coder
-description: Spart Tokens, indem das große Modell nur plant und prüft, während ein lokales Ollama-Modell den Code schreibt. Verwenden, wenn der Nutzer "local-coder", "lokal schreiben lassen", "mit dem lokalen Modell", "Tokens sparen" sagt oder /local-coder aufruft, und bei Fleißarbeit wie Boilerplate, Tests, einfachen Funktionen, Konvertierungen oder Doku, wenn der Nutzer diesen Ablauf für das Projekt gewünscht hat.
+description: Saves tokens by having the large model only plan and review while a local Ollama model writes the code. Use when the user says "local-coder", "let the local model write this", "use the local model", "save tokens", "lokal schreiben lassen", or invokes /local-coder, and for routine work such as boilerplate, tests, simple functions, conversions or docs when the user has asked for this workflow in the project.
 ---
 
-# local-coder: planen, lokal schreiben, prüfen
+# local-coder: plan, write locally, review
 
-Du (das große Modell) schreibst den Plan und prüfst. Den Code schreibt ein
-lokales Modell über Ollama. Ziel ist, teure Ausgabe-Tokens zu sparen, ohne
-schlechteren Code abzuliefern.
+You (the large model) write the plan and do the review. A local model running
+in Ollama writes the code. The goal is to save expensive output tokens without
+delivering worse code.
 
-Das lokale Modell ist klein (ca. 7B, 8 GB VRAM, Kontext 8192 Tokens). Es
-schreibt brauchbar, was genau beschrieben ist, und rät falsch, wo etwas offen
-bleibt. Die Qualität hängt deshalb fast ganz an deiner Spezifikation.
+The local model is small (about 7B, 8 GB VRAM, 8192 tokens of context). It
+writes usable code for what is described exactly and guesses wrong wherever
+something is left open. Quality therefore depends almost entirely on your
+specification.
 
-## 1. Einstufen: wer schreibt was
+## 1. Classify: who writes what
 
-Stufe jeden Schritt ein, bevor du ihn vergibst.
+Classify every step before you hand it out.
 
-| Stufe | Beispiele | Wer schreibt |
+| Kind | Examples | Who writes it |
 |---|---|---|
-| Winzig | Änderung unter ca. 15 Zeilen, Umbenennen, ein Import | Du direkt. Die Spezifikation wäre länger als der Code. |
-| Fleißarbeit | Neue Datei nach klarem Muster, Tests zu vorhandenem Code, CRUD, Datenklassen, Parser für festes Format, Konvertierung, Docstrings | Lokales Modell |
-| Schwierig | Nebenläufigkeit, Sicherheit, Auth, Geld, Migrationen, knifflige Algorithmen, Änderungen quer durch viele Dateien, Fehlersuche | Du direkt |
+| Tiny | A change under about 15 lines, a rename, one import | You, directly. The specification would be longer than the code. |
+| Routine | A new file that follows a clear pattern, tests for existing code, CRUD, data classes, a parser for a fixed format, a conversion, docstrings | Local model |
+| Hard | Concurrency, security, auth, money, migrations, tricky algorithms, changes across many files, debugging | You, directly |
 
-Im Zweifel selbst schreiben. Ein lokaler Fehlversuch plus Nachbessern kostet
-mehr als direktes Schreiben.
+When in doubt, write it yourself. A failed local attempt plus the repair costs
+more than writing it directly.
 
 ## 2. Plan
 
-Zerlege die Aufgabe so, dass jeder lokale Schritt **genau eine Datei** ergibt,
-höchstens ca. 150 Zeilen. Größere Dateien teilst du auf oder schreibst sie
-selbst. Halte den Plan kurz und zeig ihn dem Nutzer als Liste mit der
-Einstufung je Schritt; auf eine Freigabe musst du nicht warten, außer der
-Nutzer will das.
+Cut the task so that every local step produces **exactly one file** of about
+150 lines at most. Split larger files or write them yourself. Keep the plan
+short and show it to the user as a list with the classification of each step.
+You do not need to wait for approval unless the user wants that.
 
-## 3. Spezifikation je lokalem Schritt
+## 3. Specification for each local step
 
-Schreib die Spezifikation in eine Datei im Scratchpad. Sie muss ohne dieses
-Gespräch verständlich sein, denn das lokale Modell sieht nur sie und die
-Referenzdateien:
+Write the specification to a file in the scratchpad. It must make sense
+without this conversation, because the local model sees only the
+specification and the reference files:
 
-- Zweck der Datei in einem Satz
-- Sprache, Version, erlaubte Bibliotheken
-- jede öffentliche Funktion oder Klasse mit exakter Signatur und Verhalten
-- Randfälle und Fehlerverhalten ausdrücklich
-- ein Ein-/Ausgabe-Beispiel, wo das Verhalten nicht offensichtlich ist
-- was die Datei nicht tun soll, falls eine naheliegende Fehlrichtung existiert
+- the purpose of the file in one sentence
+- language, version, allowed libraries
+- every public function or class with its exact signature and behaviour
+- edge cases and error behaviour, spelled out
+- an input/output example wherever the behaviour is not obvious
+- what the file must not do, if there is an obvious wrong direction
 
-Spezifikationen auf Englisch schreiben; das lokale Modell folgt dem
-zuverlässiger.
+Write specifications in English; the local model follows them more reliably.
 
-## 4. Lokal schreiben lassen
+## 4. Have it written locally
 
 ```
 python ~/.claude/skills/local-coder/scripts/local_gen.py \
-  --spec <spec.md> --out <zieldatei> [--context datei1 datei2] [--overwrite | --edit]
+  --spec <spec.md> --out <target file> [--context file1 file2] [--overwrite | --edit]
 ```
 
-- `--context`: nur Dateien, deren Schnittstellen der Schritt wirklich braucht.
-  Das Fenster ist klein; das Skript bricht ab, wenn die Eingabe nicht passt.
-- `--overwrite`: eine vorhandene Datei von Grund auf neu erzeugen. Der alte
-  Inhalt wird dem Modell nicht gezeigt. Das ist die richtige Wahl nach einem
-  Fehlversuch, sonst schreibt das Modell seinen Fehler wieder ab.
-- `--edit`: eine vorhandene, im Kern richtige kleine Datei überarbeiten. Ihr
-  aktueller Inhalt wird mitgegeben. In großen Dateien änderst du selbst mit
-  Edit.
-- Modell: Standard `qwen2.5-coder:7b`, änderbar mit `--model` oder der
-  Umgebungsvariable `LOCAL_CODER_MODEL`.
-- Das Skript gibt nur eine Statuszeile aus. Exit-Code 2 heißt: Antwort
-  abgeschnitten, Schritt kleiner schneiden.
-- Immer nur ein Aufruf gleichzeitig. Parallele Aufrufe teilen sich die eine
-  GPU und werden langsamer, nicht schneller.
+- `--context`: only files whose interfaces the step really needs. The window
+  is small; the script aborts if the input does not fit.
+- `--overwrite`: regenerate an existing file from scratch. The old content is
+  not shown to the model. This is the right choice after a failed attempt,
+  otherwise the model copies its own mistake.
+- `--edit`: revise an existing small file that is right at its core. Its
+  current content is passed along. In large files, make the change yourself
+  with Edit.
+- Model: `qwen2.5-coder:7b` by default; change it with `--model` or the
+  environment variable `LOCAL_CODER_MODEL`.
+- The script prints a single status line. Exit code 2 means the answer was
+  cut off; make the step smaller.
+- Only one call at a time. Parallel calls share the one GPU and get slower,
+  not faster.
 
-## 5. Prüfen
+## 5. Review
 
-Prüfe erst billig, dann teuer:
+Check the cheap way first, then the expensive way:
 
-1. Maschinell: Syntaxprüfung, Linter, Typprüfung, Tests, was das Projekt eben
-   hat. Fehlermeldungen sind kürzer als der Code.
-2. Lesen: Lies jede lokal geschriebene Datei einmal ganz. Achte besonders auf
-   erfundene Funktionen oder Bibliotheken, vergessene Randfälle aus der
-   Spezifikation, stillschweigend geänderte Signaturen und Platzhalter.
+1. By machine: syntax check, linter, type check, tests, whatever the project
+   has. Error messages are shorter than the code.
+2. By reading: read every locally written file once in full. Look especially
+   for invented functions or libraries, edge cases from the specification
+   that were forgotten, silently changed signatures, and placeholders.
 
-Der lokale Code gilt erst als fertig, wenn du ihn gelesen hast. Ein grüner
-Test allein reicht nicht, wenn das lokale Modell den Test auch geschrieben hat.
+Local code only counts as done once you have read it. A green test alone is
+not enough if the local model also wrote the test.
 
-## 6. Nachbessern
+## 6. Repair
 
-- Kleine Fehler (wenige Zeilen): selbst mit Edit beheben.
-- Grundsätzlich daneben: Spezifikation schärfen und **einmal** neu erzeugen
-  lassen.
-- Zweiter Fehlversuch: Schritt selbst schreiben und für den Rest der Aufgabe
-  ähnliche Schritte nicht mehr lokal vergeben.
+- Small mistakes (a few lines): fix them yourself with Edit.
+- Wrong at its core: sharpen the specification and regenerate **once**.
+- Second failure: write the step yourself and stop handing similar steps to
+  the local model for the rest of the task.
 
-## 7. Abschluss
+## 7. Wrap-up
 
-Sag dem Nutzer am Ende in ein, zwei Sätzen, welche Dateien lokal entstanden
-sind, was du nachbessern musstest und was du selbst geschrieben hast. Die
-lokal erzeugten Tokens stehen in den Statuszeilen des Skripts.
+At the end, tell the user in a sentence or two which files were written
+locally, what you had to fix, and what you wrote yourself. The locally
+generated tokens are in the script's status lines.
 
-## Wenn Ollama nicht läuft
+## If Ollama is not running
 
-Meldet das Skript „nicht erreichbar" oder fehlt das Modell (`ollama list`),
-sag es dem Nutzer und schreib den Code selbst, statt zu warten.
+If the script reports "not reachable" or the model is missing (`ollama list`),
+tell the user and write the code yourself instead of waiting.
 
-`python ~/.claude/skills/local-coder/scripts/check_setup.py` zeigt Hardware,
-Ollama-Status und das zum Rechner passende Modell. Es ändert nichts.
+`python ~/.claude/skills/local-coder/scripts/check_setup.py` shows the
+hardware, the Ollama status and the model that fits the machine. It changes
+nothing.
