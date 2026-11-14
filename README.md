@@ -7,10 +7,6 @@ work between two models to save tokens:
 - **A local model** running in [Ollama](https://ollama.com) on your own PC
   writes the code, at no token cost.
 
-> The skill instructions (`SKILL.md`) and the messages of `local_gen.py` are
-> written in German. Claude follows them in any language; this README and
-> `check_setup.py` are in English.
-
 ## Contents
 
 - [How it works](#how-it-works)
@@ -202,11 +198,11 @@ sudo systemctl daemon-reload && sudo systemctl restart ollama
 On the test machine (Radeon RX 5700 XT) this raised a 7B model from 6.5 to 23
 tokens per second.
 
-**"Ollama nicht erreichbar" (Ollama not reachable).**
+**"ERROR: Ollama not reachable or timed out".**
 The server is not running or listens somewhere else. Run `ollama serve`, or
 set `OLLAMA_HOST`.
 
-**"Eingabe ca. N Tokens, Kontextfenster 8192" (input too large).**
+**"ERROR: input is about N tokens, context window is 8192".**
 The specification plus reference files do not fit into the model's context
 window. Pass fewer `--context` files, split the step, or raise `--num-ctx`.
 
