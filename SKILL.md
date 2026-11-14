@@ -103,3 +103,6 @@ lokal erzeugten Tokens stehen in den Statuszeilen des Skripts.
 
 Meldet das Skript „nicht erreichbar" oder fehlt das Modell (`ollama list`),
 sag es dem Nutzer und schreib den Code selbst, statt zu warten.
+
+`python ~/.claude/skills/local-coder/scripts/check_setup.py` zeigt Hardware,
+Ollama-Status und das zum Rechner passende Modell. Es ändert nichts.
